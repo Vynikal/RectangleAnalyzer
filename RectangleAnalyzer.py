@@ -1,11 +1,52 @@
+import warnings
+
 class RectangleAnalyzer:
     def __init__(self, rectangles: list[dict]):
-        """
-        Initialize analyzer with list of rectangles.
-        Each rectangle is a dict with keys: x, y, width, height
-        """
+        """Initialize analyzer with list of rectangles."""
         self.rectangles = rectangles
+        self._validate_rectangles()
 
+    def _validate_rectangles(self):
+        """Validate rectangle data."""
+        for i, rect in enumerate(self.rectangles):
+            # Check required keys
+            required = {'x', 'y', 'width', 'height'}
+            if not required.issubset(rect.keys()):
+                raise ValueError(f"Rectangle {i} missing required keys: {required - rect.keys()}")
+            
+            # Check for valid numeric values
+            for key in required:
+                if not isinstance(rect[key], (int, float)):
+                    raise TypeError(f"Rectangle {i} has non-numeric {key}: {rect[key]}")
+            
+            # Check for non-negative dimensions
+            if rect['width'] < 0 or rect['height'] < 0:
+                raise ValueError(f"Rectangle {i} has negative dimensions")
+            
+            # Check for zero-area rectangles
+            if rect['width'] == 0 or rect['height'] == 0:
+                raise ValueError(f"Rectangle {i} has zero area")
+        
+        # Check for identical rectangles
+        self._check_identical_rectangles()
+    
+    def _check_identical_rectangles(self):
+        """Check for and warn about identical rectangles."""
+        seen = {}
+        for i, rect in enumerate(self.rectangles):
+            # Create a hashable key from rectangle properties
+            key = (rect['x'], rect['y'], rect['width'], rect['height'])
+            
+            if key in seen:
+                warnings.warn(
+                    f"Rectangle {i} is identical to rectangle {seen[key]}: "
+                    f"x={rect['x']}, y={rect['y']}, width={rect['width']}, height={rect['height']}",
+                    UserWarning,
+                    stacklevel=3
+                )
+            else:
+                seen[key] = i
+    
     def find_overlaps(self) -> list[tuple]:
         """
         Find all pairs of overlapping rectangles.
@@ -112,8 +153,8 @@ class RectangleAnalyzer:
         Returns: boolean
         """
         for rect in self.rectangles:
-            if (rect['x'] <= x < rect['x'] + rect['width'] and
-                rect['y'] <= y < rect['y'] + rect['height']):
+            if (rect['x'] <= x <= rect['x'] + rect['width'] and
+                rect['y'] <= y <= rect['y'] + rect['height']):
                 return True
         return False
 
@@ -150,8 +191,8 @@ class RectangleAnalyzer:
                 test_y = (y_coords[j] + y_coords[j + 1]) / 2
                 
                 count = sum(1 for rect in self.rectangles
-                           if rect['x'] <= test_x < rect['x'] + rect['width'] and
-                              rect['y'] <= test_y < rect['y'] + rect['height'])
+                           if rect['x'] <= test_x <= rect['x'] + rect['width'] and
+                              rect['y'] <= test_y <= rect['y'] + rect['height'])
                 
                 if count > max_count:
                     max_count = count
