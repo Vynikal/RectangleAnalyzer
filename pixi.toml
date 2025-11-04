@@ -1,0 +1,24 @@
+[workspace]
+name = "rectangle-analyzer"
+version = "0.1.0"
+description = "A Python library for analyzing rectangle overlaps and coverage"
+channels = ["conda-forge"]
+platforms = ["linux-64", "win-64"]
+
+[dependencies]
+python = ">=3.10"
+
+[feature.dev.dependencies]
+pytest = ">=7.4.0"
+pytest-cov = ">=4.1.0"
+black = ">=23.0.0"
+ruff = ">=0.1.0"
+
+[tasks]
+test = "pytest rectangle_test.py -v"
+format = "black ."
+lint = "ruff check ."
+check = { depends-on = ["format", "lint", "test"] }
+
+[environments]
+default = { features = ["dev"], solve-group = "default" }
