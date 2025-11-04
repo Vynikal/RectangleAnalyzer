@@ -12,7 +12,22 @@ class RectangleAnalyzer:
         Returns: List of tuples (i, j) where i < j are indices
         Example: [(0, 1), (0, 2), (1, 2)]
         """
-        pass
+        overlaps = []
+        for i in range(len(self.rectangles)):
+            for j in range(i + 1, len(self.rectangles)):
+                if self._rectangles_overlap(self.rectangles[i], self.rectangles[j]):
+                    overlaps.append((i, j))
+        return overlaps
+    
+    def _rectangles_overlap(self, r1: dict, r2: dict) -> bool:
+        """Helper method to check if two given rectangles overlap."""
+        # No overlap if one rectangle is to the left of the other
+        if r1['x'] + r1['width'] <= r2['x'] or r2['x'] + r2['width'] <= r1['x']:
+            return False
+        # No overlap if one rectangle is above the other
+        if r1['y'] + r1['height'] <= r2['y'] or r2['y'] + r2['height'] <= r1['y']:
+            return False
+        return True
 
     def calculate_coverage_area(self) -> float:
         """
@@ -20,7 +35,41 @@ class RectangleAnalyzer:
         Overlapping areas should be counted only once.
         Returns: float/int representing total area
         """
-        pass
+        if not self.rectangles:
+            return 0.0
+        
+        # Collect all unique x and y coordinates
+        x_coords = set()
+        y_coords = set()
+        
+        for rect in self.rectangles:
+            x_coords.add(rect['x'])
+            x_coords.add(rect['x'] + rect['width'])
+            y_coords.add(rect['y'])
+            y_coords.add(rect['y'] + rect['height'])
+        
+        x_coords = sorted(x_coords)
+        y_coords = sorted(y_coords)
+        
+        # Calculate area by checking each cell in the grid
+        total_area = 0.0
+        for i in range(len(x_coords) - 1):
+            for j in range(len(y_coords) - 1):
+                cell_x = x_coords[i]
+                cell_y = y_coords[j]
+                cell_width = x_coords[i + 1] - x_coords[i]
+                cell_height = y_coords[j + 1] - y_coords[j]
+                
+                # Check if this cell is covered by any rectangle
+                for rect in self.rectangles:
+                    if (rect['x'] <= cell_x and 
+                        cell_x + cell_width <= rect['x'] + rect['width'] and
+                        rect['y'] <= cell_y and 
+                        cell_y + cell_height <= rect['y'] + rect['height']):
+                        total_area += cell_width * cell_height
+                        break
+        
+        return total_area
 
     def get_overlap_regions(self) -> list[dict]:
         """
@@ -29,14 +78,44 @@ class RectangleAnalyzer:
         - 'rect_indices': tuple of rectangle indices
         - 'region': dict with x, y, width, height of overlap
         """
-        pass
+        overlap_regions = []
+        for i in range(len(self.rectangles)):
+            for j in range(i + 1, len(self.rectangles)):
+                region = self._get_overlap_region(self.rectangles[i], self.rectangles[j])
+                if region:
+                    overlap_regions.append({
+                        'rect_indices': (i, j),
+                        'region': region
+                    })
+        return overlap_regions
+    
+    def _get_overlap_region(self, r1: dict, r2: dict) -> dict | None:
+        """Helper method to get the overlap region between two rectangles."""
+        if not self._rectangles_overlap(r1, r2):
+            return None
+        
+        x = max(r1['x'], r2['x'])
+        y = max(r1['y'], r2['y'])
+        x_max = min(r1['x'] + r1['width'], r2['x'] + r2['width'])
+        y_max = min(r1['y'] + r1['height'], r2['y'] + r2['height'])
+        
+        return {
+            'x': x,
+            'y': y,
+            'width': x_max - x,
+            'height': y_max - y
+        }
 
     def is_point_covered(self, x: int|float, y: int|float) -> bool:
         """
         Check if a point is covered by any rectangle.
         Returns: boolean
         """
-        pass
+        for rect in self.rectangles:
+            if (rect['x'] <= x < rect['x'] + rect['width'] and
+                rect['y'] <= y < rect['y'] + rect['height']):
+                return True
+        return False
 
     def find_max_overlap_point(self) -> dict:
         """
@@ -44,7 +123,41 @@ class RectangleAnalyzer:
         Returns: dict with 'x', 'y', 'count' keys
         Note: There might be multiple such points, return any one.
         """
-    pass
+        if not self.rectangles:
+            return {'x': 0, 'y': 0, 'count': 0}
+        
+        # Collect all unique x and y coordinates
+        x_coords = set()
+        y_coords = set()
+        
+        for rect in self.rectangles:
+            x_coords.add(rect['x'])
+            x_coords.add(rect['x'] + rect['width'])
+            y_coords.add(rect['y'])
+            y_coords.add(rect['y'] + rect['height'])
+        
+        x_coords = sorted(x_coords)
+        y_coords = sorted(y_coords)
+        
+        # Check center of each cell for maximum overlap
+        max_count = 0
+        max_point = {'x': 0, 'y': 0, 'count': 0}
+        
+        for i in range(len(x_coords) - 1):
+            for j in range(len(y_coords) - 1):
+                # Use center of cell
+                test_x = (x_coords[i] + x_coords[i + 1]) / 2
+                test_y = (y_coords[j] + y_coords[j + 1]) / 2
+                
+                count = sum(1 for rect in self.rectangles
+                           if rect['x'] <= test_x < rect['x'] + rect['width'] and
+                              rect['y'] <= test_y < rect['y'] + rect['height'])
+                
+                if count > max_count:
+                    max_count = count
+                    max_point = {'x': test_x, 'y': test_y, 'count': count}
+        
+        return max_point
 
     def get_stats(self) -> dict:
         """
@@ -56,4 +169,27 @@ class RectangleAnalyzer:
         - 'overlap_area': float (sum of all overlap regions)
         - 'coverage_efficiency': float (total_area / sum_of_individual_areas)
         """
-    pass
+        total_rectangles = len(self.rectangles)
+        overlapping_pairs = len(self.find_overlaps())
+        total_area = self.calculate_coverage_area()
+        
+        # Calculate overlap area (sum of all overlap regions)
+        overlap_regions = self.get_overlap_regions()
+        overlap_area = sum(region['region']['width'] * region['region']['height'] 
+                          for region in overlap_regions)
+        
+        # Calculate sum of individual areas
+        sum_of_individual_areas = sum(rect['width'] * rect['height'] 
+                                     for rect in self.rectangles)
+        
+        # Calculate coverage efficiency
+        coverage_efficiency = (total_area / sum_of_individual_areas 
+                             if sum_of_individual_areas > 0 else 0.0)
+        
+        return {
+            'total_rectangles': total_rectangles,
+            'overlapping_pairs': overlapping_pairs,
+            'total_area': total_area,
+            'overlap_area': overlap_area,
+            'coverage_efficiency': coverage_efficiency
+        }
